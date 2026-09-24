@@ -1,21 +1,10 @@
-const {
-  graphQL,
-  refreshAccessToken,
-  QUERIES,
-} = require("../../lib/jobber");
-const {
-  readJobberSession,
-  saveJobberSession,
-  clearJobberSession,
-} = require("../../lib/session");
+const { graphQL, refreshAccessToken, QUERIES } = require("../../lib/jobber");
+const { readJobberSession, saveJobberSession, clearJobberSession } = require("../../lib/session");
+const { applyCors } = require("../../lib/cors");
 
 async function getLiveSession(req, res) {
   let session = readJobberSession(req);
-  if (!session) {
-    const error = new Error("Jobber is not connected");
-    error.status = 401;
-    throw error;
-  }
+  if (!session) throw Object.assign(new Error("Jobber is not connected"), { status: 401 });
 
   if (session.expiresAt && Date.now() > session.expiresAt - 60_000) {
     const tokens = await refreshAccessToken(session.refreshToken);
@@ -32,6 +21,7 @@ async function getLiveSession(req, res) {
 }
 
 module.exports = async function handler(req, res) {
+  if (applyCors(req, res)) return;
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
   const type = String(req.query?.type || "snapshot").toLowerCase();
@@ -39,17 +29,9 @@ module.exports = async function handler(req, res) {
   try {
     const session = await getLiveSession(req, res);
 
-    if (type === "account") {
-      return res.status(200).json({ data: await graphQL(session.accessToken, QUERIES.account) });
-    }
-
-    if (type === "clients") {
-      return res.status(200).json({ data: await graphQL(session.accessToken, QUERIES.clients) });
-    }
-
-    if (type === "jobs") {
-      return res.status(200).json({ data: await graphQL(session.accessToken, QUERIES.jobs) });
-    }
+    if (type === "account") return res.status(200).json({ data: await graphQL(session.accessToken, QUERIES.account) });
+    if (type === "clients") return res.status(200).json({ data: await graphQL(session.accessToken, QUERIES.clients) });
+    if (type === "jobs") return res.status(200).json({ data: await graphQL(session.accessToken, QUERIES.jobs) });
 
     if (type === "snapshot") {
       const [account, clients, jobs] = await Promise.all([
@@ -63,9 +45,6 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: "Supported types: account, clients, jobs, snapshot" });
   } catch (error) {
     if (error.message.toLowerCase().includes("disconnected")) clearJobberSession(res);
-
-    return res.status(error.status === 401 ? 401 : 502).json({
-      error: error.message,
-    });
+    return res.status(error.status === 401 ? 401 : 502).json({ error: error.message });
   }
 };
