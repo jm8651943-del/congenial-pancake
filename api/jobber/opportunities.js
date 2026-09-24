@@ -1,29 +1,17 @@
 const { graphQL, refreshAccessToken } = require("../../lib/jobber");
 const { readJobberSession, saveJobberSession } = require("../../lib/session");
+const { applyCors } = require("../../lib/cors");
 
 const QUERY = `
 query OpportunityRadar {
   requests(first: 25) {
-    nodes {
-      id title requestStatus createdAt updatedAt source
-      client { id firstName lastName companyName }
-      property { id name }
-    }
+    nodes { id title requestStatus createdAt updatedAt source client { id firstName lastName companyName } property { id name } }
   }
   quotes(first: 25) {
-    nodes {
-      id quoteNumber title quoteStatus createdAt sentAt updatedAt
-      amounts { total }
-      client { id firstName lastName companyName }
-      property { id name }
-    }
+    nodes { id quoteNumber title quoteStatus createdAt sentAt updatedAt amounts { total } client { id firstName lastName companyName } property { id name } }
   }
   jobs(first: 25) {
-    nodes {
-      id jobNumber title jobStatus startAt endAt total uninvoicedTotal updatedAt
-      client { id firstName lastName companyName }
-      property { id name }
-    }
+    nodes { id jobNumber title jobStatus startAt endAt total uninvoicedTotal updatedAt client { id firstName lastName companyName } property { id name } }
   }
 }
 `;
@@ -48,7 +36,6 @@ function scoreRequest(item) {
   if (item?.source) score += 5;
   return Math.max(0, Math.min(100, score));
 }
-
 function scoreQuote(item) {
   let score = 55;
   if (item?.sentAt) score += 15;
@@ -56,7 +43,6 @@ function scoreQuote(item) {
   if (item?.quoteStatus) score += 5;
   return Math.max(0, Math.min(100, score));
 }
-
 function scoreJob(item) {
   let score = 45;
   if (item?.uninvoicedTotal > 0) score += 25;
@@ -66,7 +52,9 @@ function scoreJob(item) {
 }
 
 module.exports = async function handler(req, res) {
+  if (applyCors(req, res)) return;
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
+
   try {
     const current = await getSession(req, res);
     const data = await graphQL(current.accessToken, QUERY);
