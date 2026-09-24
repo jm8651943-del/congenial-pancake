@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>OPTIMIZE — PrimeForge</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter,system-ui,-apple-system,Segoe UI,sans-serif; }
+    body { margin:0; background:#0b0e12; color:#eef2f7; }
+    main { max-width:1100px; margin:0 auto; padding:48px 24px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:18px; }
+    .card { background:#121821; border:1px solid #26303d; border-radius:16px; padding:20px; }
+    h1 { margin-bottom:6px; }
+    .muted { color:#9aa7b6; }
+    button,a.button { display:inline-block; margin-top:12px; padding:11px 15px; border-radius:10px; border:1px solid #3b4655; background:#18212d; color:#fff; text-decoration:none; cursor:pointer; }
+    pre { white-space:pre-wrap; overflow:auto; background:#080b0f; padding:14px; border-radius:10px; }
+    .ok { color:#78e08f; } .warn { color:#ffd166; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>OPTIMIZE</h1>
+    <div class="muted">PrimeForge Opportunity Intelligence & Operations</div>
+
+    <div class="grid" style="margin-top:24px">
+      <section class="card">
+        <h2>Jobber Connection</h2>
+        <div id="status">Checking connection…</div>
+        <a class="button" href="/api/jobber/auth">Connect Jobber</a>
+        <button id="disconnect">Disconnect</button>
+      </section>
+
+      <section class="card">
+        <h2>Live Operational Snapshot</h2>
+        <button id="load">Load Jobber Data</button>
+        <pre id="output">No snapshot loaded.</pre>
+      </section>
+    </div>
+  </main>
+
+<script>
+async function refreshStatus() {
+  const response = await fetch("/api/jobber/status", { credentials:"include" });
+  const data = await response.json();
+  document.getElementById("status").innerHTML = data.connected
+    ? '<span class="ok">● Connected</span><br>' + (data.account?.name || "Jobber account")
+    : '<span class="warn">● Not connected</span>';
+}
+document.getElementById("load").onclick = async () => {
+  const response = await fetch("/api/jobber/data?type=snapshot", { credentials:"include" });
+  const data = await response.json();
+  document.getElementById("output").textContent = JSON.stringify(data, null, 2);
+  refreshStatus();
+};
+document.getElementById("disconnect").onclick = async () => {
+  await fetch("/api/jobber/disconnect", { method:"POST", credentials:"include" });
+  document.getElementById("output").textContent = "Disconnected.";
+  refreshStatus();
+};
+refreshStatus();
+</script>
+</body>
+</html>
