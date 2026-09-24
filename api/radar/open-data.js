@@ -11,7 +11,8 @@ module.exports = async function handler(req, res) {
       .map((id) => id.trim())
       .filter(Boolean);
 
-    const payload = await collectOpenSourceSignals({ sourceIds });
+    const includeAll = String(req.query?.all || "").toLowerCase() === "true" || String(req.query?.all || "") === "1";
+    const payload = await collectOpenSourceSignals({ sourceIds, includeAll });
     return res.status(200).json(payload);
   } catch (error) {
     return res.status(502).json({ error: error.message });
