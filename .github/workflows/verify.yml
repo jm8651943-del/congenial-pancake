@@ -1,0 +1,25 @@
+name: Verify OPTIMIZE integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          set -e
+          files=$(find api lib public -type f -name '*.js' | sort)
+          test -n "$files"
+          while IFS= read -r file; do
+            node --check "$file"
+          done <<< "$files"
