@@ -1,0 +1,26 @@
+{
+  "name": "OPTIMIZE — PrimeForge",
+  "short_name": "OPTIMIZE",
+  "description": "PrimeForge Opportunity Intelligence & Operations",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#080b0f",
+  "theme_color": "#080b0f",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/optimize-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/optimize-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
