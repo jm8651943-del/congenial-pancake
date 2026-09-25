@@ -2,62 +2,145 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#080b0f">
+  <meta name="description" content="OPTIMIZE — PrimeForge Opportunity Intelligence & Operations">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/optimize-icon.svg" type="image/svg+xml">
   <title>OPTIMIZE — PrimeForge</title>
   <style>
-    :root { color-scheme: dark; font-family: Inter,system-ui,-apple-system,Segoe UI,sans-serif; }
-    body { margin:0; background:#0b0e12; color:#eef2f7; }
-    main { max-width:1100px; margin:0 auto; padding:48px 24px; }
-    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:18px; }
-    .card { background:#121821; border:1px solid #26303d; border-radius:16px; padding:20px; }
-    h1 { margin-bottom:6px; }
-    .muted { color:#9aa7b6; }
-    button,a.button { display:inline-block; margin-top:12px; padding:11px 15px; border-radius:10px; border:1px solid #3b4655; background:#18212d; color:#fff; text-decoration:none; cursor:pointer; }
-    pre { white-space:pre-wrap; overflow:auto; background:#080b0f; padding:14px; border-radius:10px; }
-    .ok { color:#78e08f; } .warn { color:#ffd166; }
+    :root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;--bg:#080b0f;--panel:#111720;--line:#27313d;--text:#eef2f7;--muted:#92a0b0;--accent:#f1c75b;--ok:#78e08f;--warn:#ffd166}
+    *{box-sizing:border-box}
+    body{margin:0;background:radial-gradient(circle at top,#141c27 0,#080b0f 45%);color:var(--text);min-height:100vh}
+    main{width:min(1100px,100%);margin:0 auto;padding:18px 14px 34px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 2px 18px}
+    .brand{display:flex;align-items:center;gap:12px}.brand img{width:42px;height:42px}.brand h1{margin:0;font-size:1.55rem}.brand p{margin:2px 0 0;color:var(--muted);font-size:.86rem}
+    .status-pill{border:1px solid var(--line);border-radius:999px;padding:7px 10px;font-size:.78rem;white-space:nowrap}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .card{background:rgba(17,23,32,.92);border:1px solid var(--line);border-radius:18px;padding:17px;box-shadow:0 10px 30px rgba(0,0,0,.16)}
+    .card h2{margin:0 0 6px;font-size:1rem}.muted{color:var(--muted);font-size:.86rem}
+    .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+    button,a.button{appearance:none;border:1px solid #3a4654;border-radius:11px;background:#19212c;color:#fff;padding:11px 13px;text-decoration:none;font:inherit;cursor:pointer;touch-action:manipulation}
+    button.primary,a.primary{background:#201d12;border-color:#6b5a25;color:#ffe9a0}
+    button:disabled{opacity:.5;cursor:wait}
+    .metric{font-size:2rem;font-weight:700;line-height:1.05;margin:10px 0 2px}.metric-label{color:var(--muted);font-size:.78rem}
+    .ok{color:var(--ok)}.warn{color:var(--warn)}
+    .list{display:grid;gap:8px;margin-top:12px}.item{border:1px solid #222d38;border-radius:12px;padding:10px;background:#0d131b}
+    .item strong{display:block;font-size:.9rem}.item span{display:block;color:var(--muted);font-size:.76rem;margin-top:3px}
+    pre{white-space:pre-wrap;overflow:auto;background:#080c11;border:1px solid #202933;padding:11px;border-radius:12px;font-size:.74rem;max-height:340px}
+    footer{text-align:center;color:#6f7b88;font-size:.74rem;padding:18px 4px}
+    @media (max-width:760px){main{padding:12px 11px 28px}.grid{grid-template-columns:1fr}.card{padding:15px}.brand h1{font-size:1.35rem}.status-pill{font-size:.72rem}}
   </style>
 </head>
 <body>
-  <main>
-    <h1>OPTIMIZE</h1>
-    <div class="muted">PrimeForge Opportunity Intelligence & Operations</div>
-
-    <div class="grid" style="margin-top:24px">
-      <section class="card">
-        <h2>Jobber Connection</h2>
-        <div id="status">Checking connection…</div>
-        <a class="button" href="/api/jobber/auth">Connect Jobber</a>
-        <button id="disconnect">Disconnect</button>
-      </section>
-
-      <section class="card">
-        <h2>Live Operational Snapshot</h2>
-        <button id="load">Load Jobber Data</button>
-        <pre id="output">No snapshot loaded.</pre>
-      </section>
+<main>
+  <header>
+    <div class="brand">
+      <img src="/icons/optimize-icon.svg" alt="">
+      <div><h1>OPTIMIZE</h1><p>PrimeForge Opportunity Intelligence & Operations</p></div>
     </div>
-  </main>
+    <div id="connectionPill" class="status-pill">Checking…</div>
+  </header>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Jobber</h2>
+      <div id="status" class="muted">Checking connection…</div>
+      <div class="actions">
+        <a class="button primary" href="/api/jobber/auth">Connect Jobber</a>
+        <button id="disconnect">Disconnect</button>
+        <button id="sync">Sync</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Opportunity Radar</h2>
+      <div class="metric" id="radarCount">—</div>
+      <div class="metric-label">signals found</div>
+      <div class="actions">
+        <button id="scan" class="primary">Run Live Scan</button>
+      </div>
+      <div id="radarList" class="list"></div>
+    </section>
+
+    <section class="card">
+      <h2>Jobber Opportunity Queue</h2>
+      <div class="metric" id="jobberCount">—</div>
+      <div class="metric-label">ranked opportunities</div>
+      <div id="jobberList" class="list"></div>
+    </section>
+
+    <section class="card">
+      <h2>System Data</h2>
+      <pre id="output">Ready.</pre>
+    </section>
+  </div>
+
+  <footer>FORGING ATTENTION INTO GROWTH · mobile-ready OPTIMIZE app shell</footer>
+</main>
 
 <script>
-async function refreshStatus() {
-  const response = await fetch("/api/jobber/status", { credentials:"include" });
-  const data = await response.json();
-  document.getElementById("status").innerHTML = data.connected
-    ? '<span class="ok">● Connected</span><br>' + (data.account?.name || "Jobber account")
-    : '<span class="warn">● Not connected</span>';
+const $ = (id) => document.getElementById(id);
+const setBusy = (id,busy) => { $(id).disabled = busy; };
+async function getJSON(url, options={}) {
+  const response = await fetch(url,{credentials:"include",...options});
+  const type=response.headers.get("content-type")||"";
+  const body=type.includes("application/json")?await response.json():await response.text();
+  if(!response.ok) throw new Error(typeof body==="string"?body:(body.error||("Request failed: "+response.status)));
+  return body;
 }
-document.getElementById("load").onclick = async () => {
-  const response = await fetch("/api/jobber/data?type=snapshot", { credentials:"include" });
-  const data = await response.json();
-  document.getElementById("output").textContent = JSON.stringify(data, null, 2);
-  refreshStatus();
-};
-document.getElementById("disconnect").onclick = async () => {
-  await fetch("/api/jobber/disconnect", { method:"POST", credentials:"include" });
-  document.getElementById("output").textContent = "Disconnected.";
-  refreshStatus();
-};
-refreshStatus();
+function renderItems(target, items, empty="No results yet.") {
+  $(target).innerHTML = items.length
+    ? items.slice(0,8).map(item=>'<div class="item"><strong>'+escapeHtml(item.title||item.name||"Signal")+'</strong><span>'+escapeHtml(item.source||item.category||"OPTIMIZE")+(item.score!=null?" · score "+item.score:"")+'</span></div>').join("")
+    : '<div class="muted">'+empty+'</div>';
+}
+function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
+async function refreshStatus(){
+  try{
+    const data=await getJSON("/api/jobber/status");
+    if(data.connected){
+      $("status").innerHTML='<span class="ok">● Connected</span><br>'+(data.account?.name||"Jobber account");
+      $("connectionPill").innerHTML='<span class="ok">Jobber connected</span>';
+    }else{
+      $("status").innerHTML='<span class="warn">● Not connected</span>';
+      $("connectionPill").innerHTML='<span class="warn">Jobber offline</span>';
+    }
+  }catch(e){
+    $("status").textContent="Status unavailable: "+e.message;
+    $("connectionPill").textContent="API check failed";
+  }
+}
+async function runRadar(){
+  setBusy("scan",true); $("radarList").innerHTML='<div class="muted">Scanning live sources…</div>';
+  try{
+    const data=await getJSON("/api/radar/open-data?all=1");
+    const signals=data.signals||[];
+    $("radarCount").textContent=signals.length;
+    renderItems("radarList",signals);
+    $("output").textContent=JSON.stringify({generatedAt:data.generatedAt,geography:data.geography,sources:data.sources},null,2);
+  }catch(e){$("radarList").innerHTML='<div class="warn">'+escapeHtml(e.message)+'</div>';$("output").textContent=e.stack||e.message}
+  finally{setBusy("scan",false)}
+}
+async function loadJobber(){
+  setBusy("sync",true);
+  try{
+    const data=await getJSON("/api/jobber/opportunities");
+    const items=data.opportunities||[];
+    $("jobberCount").textContent=items.length;
+    renderItems("jobberList",items,"No Jobber opportunities yet.");
+    $("output").textContent=JSON.stringify({generatedAt:data.generatedAt,count:items.length},null,2);
+  }catch(e){$("jobberList").innerHTML='<div class="muted">'+escapeHtml(e.message)+'</div>'}
+  finally{setBusy("sync",false)}
+}
+$("scan").onclick=runRadar;
+$("sync").onclick=loadJobber;
+$("disconnect").onclick=async()=>{try{await getJSON("/api/jobber/disconnect",{method:"POST"});await refreshStatus();}catch(e){alert(e.message)}};
+window.addEventListener("load",async()=>{
+  if("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(()=>{});
+  await refreshStatus();
+  await runRadar();
+  await loadJobber();
+});
 </script>
 </body>
 </html>
