@@ -1,25 +1,21 @@
-# Vercel + Jobber setup for OPTIMIZE
+# Vercel + Jobber + OPTIMIZE
 
-1. Deploy the repository to Vercel.
-2. In Jobber Developer Center, set the OAuth callback URL to:
+1. Deploy jm8651943-del/congenial-pancake to the intended Vercel project.
+2. Provision/connect Neon Postgres and ensure DATABASE_URL exists in Vercel.
+3. Generate a strong OPTIMIZE_ENCRYPTION_SECRET.
+4. In Jobber Developer Center, set the OAuth callback URL to:
    https://YOUR-VERCEL-DOMAIN.vercel.app/api/jobber/callback
-3. Put these values in Vercel Environment Variables:
+5. Add:
+   DATABASE_URL
+   OPTIMIZE_ENCRYPTION_SECRET
    JOBBER_CLIENT_ID
    JOBBER_CLIENT_SECRET
    JOBBER_REDIRECT_URI
    JOBBER_GRAPHQL_VERSION=2025-04-16
-   JOBBER_SESSION_SECRET=<long-random-secret>
-4. Do not add a JOBBER_SCOPES variable. Jobber scopes are configured on the app in the Developer Center.
-5. For a local OPTIMIZE HTML served at http://127.0.0.1:8765, also set:
-   OPTIMIZE_ALLOWED_ORIGINS=http://127.0.0.1:8765,http://localhost:8765
-   JOBBER_COOKIE_SAMESITE=None
-   JOBBER_COOKIE_SECURE=true
-6. Include the browser client:
-   <script src="https://YOUR-VERCEL-DOMAIN.vercel.app/optimize-jobber-client.js"></script>
-7. In the local HTML:
-   window.OPTIMIZE_API_BASE = "https://YOUR-VERCEL-DOMAIN.vercel.app";
-   const jobber = window.OPTIMIZE_JOBBER(window.OPTIMIZE_API_BASE);
-8. Use jobber.connect(), jobber.status(), jobber.snapshot(), jobber.opportunities(), and jobber.sync().
+6. Production cookies should use HTTPS and SameSite=Lax.
+7. For a local UI on http://127.0.0.1:8765, allow that exact origin and use SameSite=None with Secure cookies.
+8. Never put Jobber client secrets or tokens in HTML, public JavaScript, GitHub, or client-side storage.
+9. The database tables are created automatically; db/schema.sql is also included for explicit provisioning.
+10. Verify account registration, login, Jobber OAuth, token refresh, /api/jobber/status, Radar, sync, disconnect/appDisconnect, and APP_DISCONNECT webhook handling.
 
-Production SaaS note:
-The current MVP session is encrypted and cookie-backed. Before onboarding multiple paying companies, move Jobber refresh tokens into durable encrypted storage keyed by OPTIMIZE tenant/account ID and process webhooks asynchronously. Jobber requires APP_DISCONNECT handling for Marketplace publication.
+The current authentication layer is tenant-aware and server-side for integration credentials. Separate future product work includes MFA, password recovery, organization invitations, billing controls, and asynchronous event workers.
