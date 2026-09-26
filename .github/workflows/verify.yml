@@ -14,12 +14,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Install dependencies
+        run: npm install --ignore-scripts
       - name: Check JavaScript syntax
         shell: bash
         run: |
           set -e
-          files=$(find api lib public -type f -name '*.js' | sort)
+          files=$(find api lib public test -type f -name '*.js' | sort)
           test -n "$files"
           while IFS= read -r file; do
             node --check "$file"
           done <<< "$files"
+      - name: Run regression tests
+        run: npm test
