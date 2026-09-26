@@ -1,47 +1,68 @@
-# OPTIMIZE + Jobber integration
+# OPTIMIZE + Jobber authentication
 
-This repo preserves the existing `OPTIMIZE_COMPLETE_v4.zip` and adds a Vercel-ready Jobber OAuth/API bridge.
+## Production architecture
 
-## Flow
+OPTIMIZE now uses:
 
-Browser / OPTIMIZE UI
--> Vercel Function
--> Jobber OAuth 2.0
--> Jobber GraphQL API
+Browser
+-> opaque HttpOnly OPTIMIZE session cookie
+-> Vercel API function
+-> encrypted tenant-scoped Jobber credentials in Postgres
+-> Jobber OAuth 2.0 / GraphQL API
 
-Jobber uses OAuth 2.0 authorization-code flow with PKCE. The Client Secret stays server-side. Access tokens expire after 60 minutes and refresh tokens are used to maintain the connection.
+Jobber access and refresh tokens are not stored in the browser session.
 
-## Vercel environment variables
+## OAuth flow
 
-Set these in the Vercel project:
+1. A signed-in OPTIMIZE user opens GET /api/jobber/auth.
+2. OPTIMIZE creates OAuth state plus a PKCE verifier/challenge.
+3. State is stored server-side against the OPTIMIZE session for 10 minutes. The PKCE verifier is encrypted at rest.
+4. Jobber redirects to /api/jobber/callback with code and state.
+5. OPTIMIZE validates the state against the current session.
+6. The authorization code is exchanged on the server using JOBBER_CLIENT_SECRET and the original PKCE verifier.
+7. OPTIMIZE queries Jobber's account object and stores the Jobber account ID/name plus encrypted access and refresh tokens under the OPTIMIZE tenant.
+8. Subsequent Jobber requests load the tenant connection server-side.
+9. Access tokens refresh automatically before expiry. Rotated refresh tokens replace the previous stored refresh token.
+10. Disconnect calls Jobber's appDisconnect mutation, then removes the local connection.
 
-- `JOBBER_CLIENT_ID`
-- `JOBBER_CLIENT_SECRET`
-- `JOBBER_REDIRECT_URI`
-- `JOBBER_SCOPES`
-- `JOBBER_GRAPHQL_VERSION`
-- `JOBBER_SESSION_SECRET`
+Jobber access tokens expire after 60 minutes and refresh-token rotation should remain enabled for production / Marketplace use.
 
-Do not put the Client Secret or access/refresh tokens in HTML or client-side JavaScript.
+## OPTIMIZE application authentication
 
-## Jobber Developer Center
+First-party account endpoints:
 
-Configure the OAuth callback URL to exactly match:
+- POST /api/auth/register
+- POST /api/auth/login
+- GET /api/auth/session
+- POST /api/auth/logout
 
-`https://YOUR-VERCEL-DOMAIN.vercel.app/api/jobber/callback`
+Passwords use Node.js scrypt. Sessions use random opaque tokens; only SHA-256 token hashes are stored in Postgres. The browser receives an HttpOnly session cookie plus a separate CSRF cookie. State-changing browser requests require X-CSRF-Token to match the CSRF cookie.
 
-The scope string is intentionally environment-configured so it matches the permissions selected in the Jobber Developer Center.
+## Webhooks
 
-## Endpoints
+POST /api/jobber/webhook verifies X-Jobber-Hmac-SHA256 against the raw request body using JOBBER_CLIENT_SECRET. Verified events are persisted idempotently. APP_DISCONNECT deletes the connection for the matching Jobber account.
 
-- `GET /api/jobber/auth` — begins OAuth + PKCE
-- `GET /api/jobber/callback` — exchanges authorization code and creates an encrypted HttpOnly session
-- `GET /api/jobber/status` — connection status
-- `GET /api/jobber/data?type=snapshot` — account + first 25 clients + first 25 jobs
-- `GET /api/jobber/data?type=clients`
-- `GET /api/jobber/data?type=jobs`
-- `POST /api/jobber/disconnect`
+## Required Vercel environment variables
 
-## MVP note
+- DATABASE_URL
+- OPTIMIZE_ENCRYPTION_SECRET
+- JOBBER_CLIENT_ID
+- JOBBER_CLIENT_SECRET
+- JOBBER_REDIRECT_URI
+- JOBBER_GRAPHQL_VERSION
 
-The current session is intentionally single-connection and cookie-backed so the first integration can be brought online without introducing a database dependency. For a multi-tenant commercial SaaS, move Jobber credentials into server-side persistent encrypted storage keyed by tenant/account, then add webhook ingestion and incremental sync.
+The old cookie-backed Jobber token session has been removed.
+
+## Database
+
+db/schema.sql contains the complete authentication / integration schema. The application also creates the required tables automatically through lib/db.js on first use.
+
+Neon Postgres is the intended Vercel database integration, with DATABASE_URL kept server-side.
+
+## Deployment security
+
+Do not commit .env files, database URLs, Jobber client secrets, access tokens, refresh tokens, or exported credentials.
+
+For a production same-origin Vercel deployment, keep SameSite=Lax and HTTPS.
+
+For a local UI hosted on another origin, configure the exact origin in OPTIMIZE_ALLOWED_ORIGINS and use SameSite=None plus Secure cookies. Browser third-party-cookie policy may still limit localhost-to-Vercel sessions; production same-origin hosting is the supported path.
