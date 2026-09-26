@@ -1,22 +1,35 @@
 # OPTIMIZE integration paths
 
-The integration layer exposes the operational seams needed for the first live vertical.
+## Account boundary
 
-## Jobber inbound
-- OAuth + PKCE: /api/jobber/auth -> /api/jobber/callback
-- Connection health: /api/jobber/status
-- Account/clients/jobs snapshot: /api/jobber/data
-- Broader sync: /api/jobber/sync?resource=all
-- Individual resources: clients, jobs, quotes, requests, visits, invoices
-- Opportunity Radar input: /api/jobber/opportunities
-- Real-time event receiver: /api/jobber/webhook
-- Disconnect: /api/jobber/disconnect
+OPTIMIZE requires an authenticated OPTIMIZE account for Radar and Jobber operations. Each registered account owns an OPTIMIZE tenant workspace. The current schema supports multiple memberships, while the initial UI selects the user's first owner membership.
 
-## Platform health
-- /api/health
+## Authentication endpoints
 
-## Security
-Client secrets and OAuth tokens remain server-side. Jobber recommends OAuth 2.0 rather than static API keys, requires the GraphQL version header, and supports webhooks for real-time changes. Webhooks must be authenticated with the X-Jobber-Hmac-SHA256 signature and should be acknowledged quickly before asynchronous processing.
+- /api/auth/register
+- /api/auth/login
+- /api/auth/session
+- /api/auth/logout
 
-## Next production step
-Move encrypted OAuth sessions from a cookie to a durable database keyed by Jobber account ID / OPTIMIZE tenant ID. Then process webhook events idempotently and use them to invalidate/update the tenant's Opportunity Radar cache.
+## Jobber endpoints
+
+- /api/jobber/auth
+- /api/jobber/callback
+- /api/jobber/status
+- /api/jobber/data
+- /api/jobber/sync?resource=all
+- /api/jobber/opportunities
+- /api/jobber/webhook
+- /api/jobber/disconnect
+
+## Security boundary
+
+Client secrets never enter browser JavaScript. Jobber access and refresh tokens are encrypted at rest and are only decrypted inside server-side code. Browser authentication uses an opaque HttpOnly session token; only its SHA-256 hash is stored in Postgres.
+
+OAuth uses authorization code + PKCE. OAuth state is stored server-side and bound to the current OPTIMIZE session. State-changing browser requests require CSRF validation.
+
+Jobber webhooks use X-Jobber-Hmac-SHA256 over the raw request body and are deduplicated before processing. APP_DISCONNECT removes the matching tenant connection.
+
+## Remaining product hardening
+
+Account recovery, email verification, MFA, organization invitations, billing entitlements, and a durable background queue for non-disconnect webhook processing remain separate product features. They are intentionally not mixed into the current credential-boundary migration.
