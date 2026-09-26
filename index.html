@@ -20,15 +20,18 @@
     .card{background:rgba(17,23,32,.92);border:1px solid var(--line);border-radius:18px;padding:17px;box-shadow:0 10px 30px rgba(0,0,0,.16)}
     .card h2{margin:0 0 6px;font-size:1rem}.muted{color:var(--muted);font-size:.86rem}
     .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-    button,a.button{appearance:none;border:1px solid #3a4654;border-radius:11px;background:#19212c;color:#fff;padding:11px 13px;text-decoration:none;font:inherit;cursor:pointer;touch-action:manipulation}
-    button.primary,a.primary{background:#201d12;border-color:#6b5a25;color:#ffe9a0}
+    button{appearance:none;border:1px solid #3a4654;border-radius:11px;background:#19212c;color:#fff;padding:11px 13px;text-decoration:none;font:inherit;cursor:pointer;touch-action:manipulation}
+    button.primary{background:#201d12;border-color:#6b5a25;color:#ffe9a0}.tab{background:transparent}.tab.active{border-color:#6b5a25;color:#ffe9a0}
     button:disabled{opacity:.5;cursor:wait}
+    input{width:100%;margin-top:6px;padding:11px 12px;border-radius:10px;border:1px solid #3a4654;background:#0c1118;color:#fff;font:inherit}
+    label{display:block;color:var(--muted);font-size:.8rem;margin-top:10px}
     .metric{font-size:2rem;font-weight:700;line-height:1.05;margin:10px 0 2px}.metric-label{color:var(--muted);font-size:.78rem}
     .ok{color:var(--ok)}.warn{color:var(--warn)}
     .list{display:grid;gap:8px;margin-top:12px}.item{border:1px solid #222d38;border-radius:12px;padding:10px;background:#0d131b}
     .item strong{display:block;font-size:.9rem}.item span{display:block;color:var(--muted);font-size:.76rem;margin-top:3px}
     pre{white-space:pre-wrap;overflow:auto;background:#080c11;border:1px solid #202933;padding:11px;border-radius:12px;font-size:.74rem;max-height:340px}
     footer{text-align:center;color:#6f7b88;font-size:.74rem;padding:18px 4px}
+    .auth-box{max-width:480px;margin:30px auto}.identity{display:flex;align-items:center;justify-content:space-between;gap:10px}.identity small{display:block;color:var(--muted)}
     @media (max-width:760px){main{padding:12px 11px 28px}.grid{grid-template-columns:1fr}.card{padding:15px}.brand h1{font-size:1.35rem}.status-pill{font-size:.72rem}}
   </style>
 </head>
@@ -39,108 +42,82 @@
       <img src="/icons/optimize-icon.svg" alt="">
       <div><h1>OPTIMIZE</h1><p>PrimeForge Opportunity Intelligence & Operations</p></div>
     </div>
-    <div id="connectionPill" class="status-pill">Checking…</div>
+    <div id="connectionPill" class="status-pill">Sign in required</div>
   </header>
 
-  <div class="grid">
-    <section class="card">
-      <h2>Jobber</h2>
-      <div id="status" class="muted">Checking connection…</div>
-      <div class="actions">
-        <a class="button primary" href="/api/jobber/auth">Connect Jobber</a>
-        <button id="disconnect">Disconnect</button>
-        <button id="sync">Sync</button>
+  <section id="authPanel" class="card auth-box">
+    <h2>OPTIMIZE account</h2>
+    <p class="muted">Your account controls access to the Opportunity Radar and Jobber connection.</p>
+    <div class="actions">
+      <button id="showLogin" class="tab active">Sign in</button>
+      <button id="showRegister" class="tab">Create account</button>
+    </div>
+
+    <div id="loginBox">
+      <form id="loginForm">
+        <label>Email<input id="loginEmail" type="email" autocomplete="email" required></label>
+        <label>Password<input id="loginPassword" type="password" autocomplete="current-password" minlength="12" required></label>
+        <div class="actions"><button class="primary" type="submit">Sign in</button></div>
+      </form>
+    </div>
+
+    <div id="registerBox" hidden>
+      <form id="registerForm">
+        <label>Name<input id="registerName" type="text" autocomplete="name" maxlength="120"></label>
+        <label>Workspace<input id="registerTenant" type="text" maxlength="120" placeholder="My OPTIMIZE Workspace"></label>
+        <label>Email<input id="registerEmail" type="email" autocomplete="email" required></label>
+        <label>Password<input id="registerPassword" type="password" autocomplete="new-password" minlength="12" maxlength="200" required></label>
+        <div class="actions"><button class="primary" type="submit">Create account</button></div>
+      </form>
+    </div>
+
+    <div id="authMessage" class="muted"></div>
+  </section>
+
+  <section id="appPanel" hidden>
+    <div class="card" style="margin-bottom:14px">
+      <div class="identity">
+        <div><strong id="identity">OPTIMIZE</strong><small id="role">owner</small></div>
+        <button id="logout">Sign out</button>
       </div>
-    </section>
+      <div id="appMessage" class="muted"></div>
+    </div>
 
-    <section class="card">
-      <h2>Opportunity Radar</h2>
-      <div class="metric" id="radarCount">—</div>
-      <div class="metric-label">signals found</div>
-      <div class="actions">
-        <button id="scan" class="primary">Run Live Scan</button>
-      </div>
-      <div id="radarList" class="list"></div>
-    </section>
+    <div class="grid">
+      <section class="card">
+        <h2>Jobber</h2>
+        <div id="status" class="muted">Checking connection…</div>
+        <div class="actions">
+          <button id="connect" class="primary">Connect Jobber</button>
+          <button id="disconnect">Disconnect</button>
+          <button id="sync">Sync</button>
+        </div>
+      </section>
 
-    <section class="card">
-      <h2>Jobber Opportunity Queue</h2>
-      <div class="metric" id="jobberCount">—</div>
-      <div class="metric-label">ranked opportunities</div>
-      <div id="jobberList" class="list"></div>
-    </section>
+      <section class="card">
+        <h2>Opportunity Radar</h2>
+        <div class="metric" id="radarCount">—</div>
+        <div class="metric-label">signals found</div>
+        <div class="actions"><button id="scan" class="primary">Run Live Scan</button></div>
+        <div id="radarList" class="list"></div>
+      </section>
 
-    <section class="card">
-      <h2>System Data</h2>
-      <pre id="output">Ready.</pre>
-    </section>
-  </div>
+      <section class="card">
+        <h2>Jobber Opportunity Queue</h2>
+        <div class="metric" id="jobberCount">—</div>
+        <div class="metric-label">ranked opportunities</div>
+        <div id="jobberList" class="list"></div>
+      </section>
 
-  <footer>FORGING ATTENTION INTO GROWTH · mobile-ready OPTIMIZE app shell</footer>
+      <section class="card">
+        <h2>System Data</h2>
+        <pre id="output">Ready.</pre>
+      </section>
+    </div>
+  </section>
+
+  <footer>FORGING ATTENTION INTO GROWTH · secure OPTIMIZE app shell</footer>
 </main>
-
-<script>
-const $ = (id) => document.getElementById(id);
-const setBusy = (id,busy) => { $(id).disabled = busy; };
-async function getJSON(url, options={}) {
-  const response = await fetch(url,{credentials:"include",...options});
-  const type=response.headers.get("content-type")||"";
-  const body=type.includes("application/json")?await response.json():await response.text();
-  if(!response.ok) throw new Error(typeof body==="string"?body:(body.error||("Request failed: "+response.status)));
-  return body;
-}
-function renderItems(target, items, empty="No results yet.") {
-  $(target).innerHTML = items.length
-    ? items.slice(0,8).map(item=>'<div class="item"><strong>'+escapeHtml(item.title||item.name||"Signal")+'</strong><span>'+escapeHtml(item.source||item.category||"OPTIMIZE")+(item.score!=null?" · score "+item.score:"")+'</span></div>').join("")
-    : '<div class="muted">'+empty+'</div>';
-}
-function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
-async function refreshStatus(){
-  try{
-    const data=await getJSON("/api/jobber/status");
-    if(data.connected){
-      $("status").innerHTML='<span class="ok">● Connected</span><br>'+(data.account?.name||"Jobber account");
-      $("connectionPill").innerHTML='<span class="ok">Jobber connected</span>';
-    }else{
-      $("status").innerHTML='<span class="warn">● Not connected</span>';
-      $("connectionPill").innerHTML='<span class="warn">Jobber offline</span>';
-    }
-  }catch(e){
-    $("status").textContent="Status unavailable: "+e.message;
-    $("connectionPill").textContent="API check failed";
-  }
-}
-async function runRadar(){
-  setBusy("scan",true); $("radarList").innerHTML='<div class="muted">Scanning live sources…</div>';
-  try{
-    const data=await getJSON("/api/radar/open-data?all=1");
-    const signals=data.signals||[];
-    $("radarCount").textContent=signals.length;
-    renderItems("radarList",signals);
-    $("output").textContent=JSON.stringify({generatedAt:data.generatedAt,geography:data.geography,sources:data.sources},null,2);
-  }catch(e){$("radarList").innerHTML='<div class="warn">'+escapeHtml(e.message)+'</div>';$("output").textContent=e.stack||e.message}
-  finally{setBusy("scan",false)}
-}
-async function loadJobber(){
-  setBusy("sync",true);
-  try{
-    const data=await getJSON("/api/jobber/opportunities");
-    const items=data.opportunities||[];
-    $("jobberCount").textContent=items.length;
-    renderItems("jobberList",items,"No Jobber opportunities yet.");
-    $("output").textContent=JSON.stringify({generatedAt:data.generatedAt,count:items.length},null,2);
-  }catch(e){$("jobberList").innerHTML='<div class="muted">'+escapeHtml(e.message)+'</div>'}
-  finally{setBusy("sync",false)}
-}
-$("scan").onclick=runRadar;
-$("sync").onclick=loadJobber;
-$("disconnect").onclick=async()=>{try{await getJSON("/api/jobber/disconnect",{method:"POST"});await refreshStatus();}catch(e){alert(e.message)}};
-window.addEventListener("load",async()=>{
-  if("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(()=>{});
-  await refreshStatus();
-  await runRadar();
-  await loadJobber();
-});
-</script>
+<script src="/optimize-app.js"></script>
 </body>
 </html>
